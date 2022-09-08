@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <title>odoc</title>
+        <style>
+            body {
+                background-color: #0043ab;
+            }
+            .desktop {
+                color: white;
+            }
+            .taskbar {
+                background-color: #d6d7dc;
+                width: 100%;
+                height: 7%;
+                position: absolute;
+                bottom: 0%;
+                left: 0%;
+            }
+            .taskbar-main-start {
+                outline-width: 0px;
+                border-width: 0px;
+                background-color: rgba(255,255,255,50%);
+                height: 100%;
+                width: 8%;
+                font-size: 200%;
+            }
+            .taskbar-main-timeanddate {
+                position: absolute;
+                top: 0%;
+                right: 1%;
+            }
+            .desktop-icon {
+                color: white;
+                width: 7%;
+                float: left;
+                background-color: transparent;
+                outline-width: 0px;
+                border-width: 0px;
+                /*position: absolute;*/
+            }
+            .desktop-icon-text {
+                text-align: center;
+            }
+            .computer-window {
+                color: black;
+                background-color: white;
+                outline-style: outset;
+                outline-color: blue;
+                outline-width: 5px;
+                position: absolute;
+            }
+            .computer-window-topbar {
+                color: white;
+                background-color: blue;
+            }
+            .computer-window-topbar-closeButton {
+                color: white;
+                width: 64px;
+                height: 64px;
+                float: right;
+                background-color: red;
+                outline-color: white;
+                border-color: white;
+                text-align: center;
+                font-size: 300%;
+            }
+            .computer-window-topbar-moveButton {
+                color: white;
+                width: 64px;
+                height: 64px;
+                float: right;
+                background-color: #ffaa00;
+                outline-color: white;
+                border-color: white;
+                text-align: center;
+                font-size: 300%;
+            }
+            .computer-window-topbar-metadata {
+                display: flex;
+                vertical-align: middle;
+            }
+            .computer-window-content-div {
+                overflow: hidden;
+            }
+            .computer-window-userFiles-tableElement {
+                height: 3em;
+                overflow: auto;
+            }
+        </style>
+    </head>
+    <body>
+        <!--<p id="debug_log" style="color:white"></p>-->
+        <div class="desktop" id="desktop">
+        </div>
+        <div class="taskbar" id="taskbar">
+            <button type="input" class="taskbar-main-start" id="taskbar_main_start">start</button>
+            <p class="taskbar-main-timeanddate" id="taskbar_timeanddate"></p>
+        </div>
+        <script>
+            let mouseX = 0
+            let mouseY = 0
+            window.onmousemove = (e) => {
+                mouseX = e.clientX
+                mouseY = e.clientY
+            }
+            const mouseUpEvents = []
+            const registeredPrograms = []
+            window.onmouseup = () => {
+                mouseUpEvents.forEach(event => {
+                    event()
+                })
+            }
+            function unixToDate(unix) {
+                return (new Date(unix).toDateString() + ", " + new Date(unix).toLocaleTimeString())
+            }
+            /*setInterval(() => {
+                document.getElementById("debug_log").innerHTML = mouseX + " " + mouseY
+            }, 1)*/
+            setInterval(() => {
+                document.getElementById("taskbar_timeanddate").innerHTML = unixToDate(new Date().getTime())
+            }, 1000)
+            // style functions
+            function positionToStyle(x, y, offset) {
+                return "left:" + (x - (offset ? offset : 0)) + "px;top:" + (y - (offset ? offset : 0)) + "px"
+            }
+            // program functions
+            const desktop = document.getElementById("desktop")
+            function createProgram(name, image, onOpen) {
+                const icon = document.createElement("button")
+                icon.name = "desktop_icon"
+                const desktopIconID = Math.round(Math.random() * 999999999)
+                icon.id = "desktop_icon_" + desktopIconID
+                icon.setAttribute("class", "desktop-icon")
+                const iconImage = document.createElement("img")
+                iconImage.draggable = false
+                iconImage.width = 100
+                iconImage.height = 100
+                iconImage.src = image
+                icon.append(iconImage)
+                const iconDescriptor = document.createElement("p")
+                iconDescriptor.setAttribute("class", "desktop-icon-text")
+                iconDescriptor.innerHTML = name
+                icon.append(iconDescriptor)
+                desktop.append(icon)
+                icon.onclick = () => {
+                    if (onOpen != null) onOpen(desktopIconID, name, image)
+                }
+                registeredPrograms.push({name: name, image: image, onOpen: onOpen})
+            }
+            function createWindow(data) {
+                const win = document.createElement("div")
+                win.setAttribute("class", "computer-window")
+                desktop.append(win)
+                win.setAttribute("width", String(data.width == null ? 0 : data.width))
+                win.setAttribute("height", String(data.height == null ? 0 : data.height))
+                win.setAttribute("x", "20")
+                win.setAttribute("y", "20")
+                function render() {
+                    win.setAttribute("style", "width:" + win.getAttribute("width") + "px;height:" + win.getAttribute("height") + "px;left:" + win.getAttribute("x") + "px;top:" + win.getAttribute("y") + "px")
+                }
+                win.render = render
+                function setPosition(x, y) {
+                    win.setAttribute("x", String(x))
+                    win.setAttribute("y", String(y))
+                    render()
+                }
+                win.setPosition = setPosition
+                win.close = () => {
+                    win.remove()
+                }
+                render()
+                if (!data.notopbar) {
+                    const topbar = document.createElement("div")
+                    topbar.setAttribute("class", "computer-window-topbar")
+                    topbar.innerHTML = "<div class=\"computer-window-topbar-metadata\"><img src=\"" + data.icon + "\" width=\"64\" height=\"64\"><p>" + data.title + "</p></div>"
+                    if (!data.noMoving) {
+                        let isMoving = false
+                        const moveButton = document.createElement("button")
+                        moveButton.setAttribute("class", "computer-window-topbar-moveButton")
+                        moveButton.innerHTML = "O"
+                        topbar.prepend(moveButton)
+                        let moveInterval = null
+                        moveButton.onclick = () => {
+                            if (!isMoving) {
+                                isMoving = true
+                                moveInterval = setInterval(() => {
+                                    setPosition(mouseX - (data.width - 90), mouseY - 30)
+                                }, 10)
+                                if (win.onstartmove) win.onstartmove()
+                            } else {
+                                isMoving = false
+                                clearInterval(moveInterval)
+                                if (win.onendmove) win.onendmove()
+                            }
+                        }
+                        
+                    }
+                    if (!data.noCloseButton) {
+                        const closeButton = document.createElement("button")
+                        closeButton.setAttribute("class", "computer-window-topbar-closeButton")
+                        closeButton.innerHTML = "X"
+                        topbar.prepend(closeButton)
+                        closeButton.onclick = () => {
+                            if (!win.onclose) {
+                                showError("This program has no onclose function", true)
+                                win.close()
+                            } else {
+                                win.onclose()
+                            }
+                        }
+                    }
+                    win.append(topbar)
+                }
+                const contentDiv = document.createElement("div")
+                contentDiv.setAttribute("class", "computer-window-content-div")
+                win.content = contentDiv
+                win.append(contentDiv)
+                return win
+            }
+            function showError(message, playSound) {
+                const errwin = createWindow({
+                    title: "Error",
+                    icon: "https://cdn0.iconfinder.com/data/icons/shift-free/32/Error-512.png",
+                    width: 640,
+                    height: 220
+                })
+                errwin.onclose = () => {
+                    errwin.close()
+                }
+                errwin.content.innerHTML = "<div style=\"text-align:center;\"><br><img src=\"https://cdn0.iconfinder.com/data/icons/shift-free/32/Error-512.png\" width=\"75\" height=\"75\"><p>" + message + "</p></div>"
+                console.error(message)
+                if (playSound) {
+                    const audio = new Audio("https://cdn.discordapp.com/attachments/914411539887456296/1016924505098178620/criticalstop.wav")
+                    audio.play()
+                }
+            }
+            // create programs
+            createProgram("user", "https://qtechbabble.files.wordpress.com/2017/10/windowshomedirectoryicon.png", function(id, name, image) {
+                const w = createWindow({
+                    title: name,
+                    icon: image,
+                    width: 1280,
+                    height: 720
+                })
+                w.onclose = () => {
+                    w.close()
+                }
+                const programsLabel = document.createElement("h1")
+                programsLabel.innerHTML = "Registered programs"
+                w.content.append(programsLabel)
+                registeredPrograms.forEach(program => {
+                    const button = document.createElement("button")
+                    button.type = "submit"
+                    button.innerHTML = "<img src=\"" + String(program.image) + "\" width=\"64\" height=\"64\"><p>" + String(program.name).replace(/</gmi, "&lt;") + "</p>"
+                    button.onclick = () => {
+                        program.onOpen(null, program.name, program.image)
+                    }
+                    w.content.append(button)
+                })
+                w.content.append(document.createElement("br"))
+                w.content.append(document.createElement("br"))
+                const storageLabel = document.createElement("h1")
+                storageLabel.innerHTML = "Computer storage"
+                w.content.append(storageLabel)
+                const details = document.createElement("details")
+                const summary = document.createElement("summary")
+                summary.innerHTML = "View localStorage"
+                details.append(summary)
+                const refreshLocalStorageButton = document.createElement("input")
+                refreshLocalStorageButton.value = "↺"
+                refreshLocalStorageButton.title = "Refresh localStorage"
+                refreshLocalStorageButton.type = "submit"
+                details.append(refreshLocalStorageButton)
+                w.content.append(details)
+                const table = document.createElement("table")
+                function resetTable(table) {
+                    table.innerHTML = "<tr><th>Key</th><th>Value</th></tr>"
+                    for (let i = 0; localStorage.key(i) != null; i++) {
+                        const tr = document.createElement("tr")
+                        tr.innerHTML = "<td><code>" + String(localStorage.key(i)).replace(/</gmi, "&lt;").replace(/\n/gmi, "<br>") + "</code></td><td><div class=\"computer-window-userFiles-tableElement\"><code>" + String(localStorage.getItem(localStorage.key(i))).replace(/</gmi, "&lt;").replace(/\n/gmi, "<br>") + "</code></div></td>"
+                        table.append(tr)
+                    }
+                }
+                resetTable(table)
+                refreshLocalStorageButton.onclick = () => {
+                    resetTable(table)
+                }
+                details.append(table)
+            })
+            createProgram("notepad", "https://static.wikia.nocookie.net/logopedia/images/c/c4/Notepad_Vista_10.png/revision/latest?cb=20181031102045", function(id, name, image) {
+                const w = createWindow({
+                    title: name,
+                    icon: image,
+                    width: 720,
+                    height: 720
+                })
+                const textarea = document.createElement("textarea")
+                w.onclose = () => {
+                    localStorage.setItem("NOTEPAD_string", textarea.value)
+                    w.close()
+                }
+                textarea.setAttribute("style", "width:100%;height:49em")
+                w.content.append(textarea)
+                const str = localStorage.getItem("NOTEPAD_string")
+                if (str) textarea.value = str
+            })
+            createProgram(
+                "webframe",
+                "https://media.discordapp.net/attachments/914411539887456296/1016922913313669140/webframe.png",
+                function(id, name, image) {
+                    const w = createWindow({
+                        title: name,
+                        icon: image,
+                        width: 1280,
+                        height: 720
+                    })
+                    w.onclose = () => {
+                        w.close()
+                    }
+                    if (!localStorage.getItem("WEBFRAME_history")) localStorage.setItem("WEBFRAME_history", "[]")
+                    const infobar = document.createElement("div")
+                    infobar.setAttribute("style", "width:100%;background-color:gray;height:1.6em;color:white")
+                    /*
+                    const backButton = document.createElement("input")
+                    backButton.title = "Go back a page"
+                    backButton.type = "submit"
+                    backButton.value = "⏪"
+                    infobar.append(backButton)
+                    const forwardButton = document.createElement("input")
+                    forwardButton.title = "Go to the page you went back from"
+                    forwardButton.type = "submit"
+                    forwardButton.value = "⏩"
+                    infobar.append(forwardButton)
+                    */
+                    const refreshButton = document.createElement("input")
+                    refreshButton.title = "Refresh this page"
+                    refreshButton.type = "submit"
+                    refreshButton.value = "🔄"
+                    infobar.append(refreshButton)
+                    const searchBar = document.createElement("input")
+                    searchBar.title = "Search for something"
+                    searchBar.type = "text"
+                    searchBar.size = 130
+                    infobar.append(searchBar)
+                    const searchButton = document.createElement("input")
+                    searchButton.title = "Search"
+                    searchButton.type = "submit"
+                    searchButton.value = "🔍"
+                    infobar.append(searchButton)
+                    const shareButton = document.createElement("input")
+                    shareButton.title = "Copy this website link"
+                    shareButton.type = "submit"
+                    shareButton.value = "📩"
+                    infobar.append(shareButton)
+                    const history = document.createElement("input")
+                    history.title = "View your search history"
+                    history.type = "submit"
+                    history.value = "🕑"
+                    infobar.append(history)
+                    const homeButton = document.createElement("input")
+                    homeButton.title = "Go to home page"
+                    homeButton.type = "submit"
+                    homeButton.value = "🏠"
+                    infobar.append(homeButton)
+                    const searchingHandlerSelector = document.createElement("select")
+                    searchingHandlerSelector.title = "Switch searching handler"
+                    infobar.append(searchingHandlerSelector)
+                    const handlerIframeOption = document.createElement("option")
+                    handlerIframeOption.innerHTML = "iFrame"
+                    handlerIframeOption.value = "iframe"
+                    searchingHandlerSelector.append(handlerIframeOption)
+                    const handlerFetchOption = document.createElement("option")
+                    handlerFetchOption.innerHTML = "Fetch"
+                    handlerFetchOption.value = "fetch"
+                    searchingHandlerSelector.append(handlerFetchOption)
+                    w.content.append(infobar)
+                    const webframe = document.createElement("iframe")
+                    webframe.setAttribute("style", "width:100%;height:39em")
+                    function loadWebpage(url) {
+                        const isUsingFetch = searchingHandlerSelector.value == "fetch"
+                        if (isUsingFetch == true) {
+                            const blob = new Blob(["<p>Fetching page, please wait...</p>"], {
+                                type: "text/html"
+                            })
+                            webframe.src = window.URL.createObjectURL(blob)
+                            fetch(String(url), {
+                                headers: {
+                                    "Access-Control-Allow-Origin": "*",
+                                    "Origin": String(url)
+                                }
+                            }).then(response => { response.text().then(html => {
+                                const blob = new Blob([html], {
+                                    type: response.headers.get("Content-Type")
+                                })
+                                webframe.src = window.URL.createObjectURL(blob)
+                            }).catch(err => {
+                                const blob = new Blob(["<p>An error occurred: " + err + "</p>"], {
+                                    type: "text/html"
+                                })
+                                webframe.src = window.URL.createObjectURL(blob)
+                            })}).catch(err => {
+                                const blob = new Blob(["<p>An error occurred: " + err + "</p>"], {
+                                    type: "text/html"
+                                })
+                                webframe.src = window.URL.createObjectURL(blob)
+                            })
+                        } else {
+                            webframe.src = url
+                        }
+                        searchBar.value = url
+                        const historyArray = JSON.parse(localStorage.getItem("WEBFRAME_history"))
+                        historyArray.push({url: url, date: new Date().getTime()})
+                        localStorage.setItem("WEBFRAME_history", JSON.stringify(historyArray))
+                    }
+                    loadWebpage("https://bing.com")
+                    searchBar.onsubmit = () => {
+                        if (String(searchBar.value) == "wf:history") {
+                            history.onclick()
+                            return
+                        }
+                        if (!(String(searchBar.value).includes(".") || String(searchBar.value).includes("/"))) {
+                            searchBar.value = "https://www.bing.com/search?q=" + encodeURIComponent(searchBar.value)
+                            loadWebpage(searchBar.value)
+                            return
+                        }
+                        if (!(String(searchBar.value).match(/http(s|):\/\//))) searchBar.value = "https://" + searchBar.value
+                        loadWebpage(searchBar.value)
+                    }
+                    searchBar.onkeypress = (e) => {
+                        if (e.keyCode == 13) searchBar.onsubmit()
+                    }
+                    searchButton.onclick = searchBar.onsubmit
+                    refreshButton.onclick = searchBar.onsubmit
+                    shareButton.onclick = () => {
+                        navigator.clipboard.writeText(String(searchBar.value))
+                    }
+                    homeButton.onclick = () => {
+                        loadWebpage("https://bing.com")
+                    }
+                    history.onclick = () => {
+                        let html = ""
+                        const historyArray = JSON.parse(localStorage.getItem("WEBFRAME_history"))
+                        historyArray.forEach(memory => {
+                            html = "<p>" + memory.url + " - <i>" + unixToDate(memory.date) + "</i></p>" + html
+                        })
+                        html = "<h1>Search history</h1><br>" + html
+                        const blob = new Blob([html], {
+                            type: "text/html"
+                        })
+                        loadWebpage(window.URL.createObjectURL(blob))
+                        searchBar.value = "wf:history"
+                    }
+                    w.content.append(webframe)
+                }
+            )
+            // dragging desktop icons
+            /*
+            const desktopicons = document.getElementsByName("desktop_icon")
+            for (let i = 0; i < desktopicons.length; i++) {
+                const icon = desktopicons.item(i)
+                let iconBeingClicked = false
+                icon.onclick = () => {
+                    iconBeingClicked = true
+                }
+                mouseUpEvents.push(() => { iconBeingClicked = false })
+                setInterval(() => {
+                    if (iconBeingClicked) { icon.setAttribute("style", positionToStyle(mouseX, mouseY, 50)) }
+                }, 10)
+            }
+            */
+        </script>
+    </body>
+</html>
