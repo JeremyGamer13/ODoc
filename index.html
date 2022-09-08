@@ -98,6 +98,14 @@
             <p class="taskbar-main-timeanddate" id="taskbar_timeanddate"></p>
         </div>
         <script>
+            const params = new URLSearchParams(document.location.search);
+            if (params.has("blob")) {
+                const html = "<!DOCTYPE html><html lang=\"en-US\">" + document.documentElement.innerHTML + "</html>"
+                const blob = new Blob([html], {
+                    type: "text/html"
+                })
+                window.location.href = window.URL.createObjectURL(blob)
+            }
             let mouseX = 0
             let mouseY = 0
             window.onmousemove = (e) => {
@@ -221,14 +229,14 @@
             function showError(message, playSound) {
                 const errwin = createWindow({
                     title: "Error",
-                    icon: "https://cdn0.iconfinder.com/data/icons/shift-free/32/Error-512.png",
+                    icon: "./assets/icons/error.png",
                     width: 640,
                     height: 220
                 })
                 errwin.onclose = () => {
                     errwin.close()
                 }
-                errwin.content.innerHTML = "<div style=\"text-align:center;\"><br><img src=\"https://cdn0.iconfinder.com/data/icons/shift-free/32/Error-512.png\" width=\"75\" height=\"75\"><p>" + message + "</p></div>"
+                errwin.content.innerHTML = "<div style=\"text-align:center;\"><br><img src=\"./assets/icons/error.png\" width=\"75\" height=\"75\"><p>" + message + "</p></div>"
                 console.error(message)
                 if (playSound) {
                     const audio = new Audio("https://cdn.discordapp.com/attachments/914411539887456296/1016924505098178620/criticalstop.wav")
@@ -236,7 +244,7 @@
                 }
             }
             // create programs
-            createProgram("user", "https://qtechbabble.files.wordpress.com/2017/10/windowshomedirectoryicon.png", function(id, name, image) {
+            createProgram("user", "./assets/icons/userfolder.png", function(id, name, image) {
                 const w = createWindow({
                     title: name,
                     icon: image,
@@ -288,7 +296,7 @@
                 }
                 details.append(table)
             })
-            createProgram("notepad", "https://static.wikia.nocookie.net/logopedia/images/c/c4/Notepad_Vista_10.png/revision/latest?cb=20181031102045", function(id, name, image) {
+            createProgram("notepad", "./assets/icons/notepad.png", function(id, name, image) {
                 const w = createWindow({
                     title: name,
                     icon: image,
@@ -307,7 +315,7 @@
             })
             createProgram(
                 "webframe",
-                "https://media.discordapp.net/attachments/914411539887456296/1016922913313669140/webframe.png",
+                "./assets/icons/webframe.png",
                 function(id, name, image) {
                     const w = createWindow({
                         title: name,
