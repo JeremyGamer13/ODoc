@@ -3,8 +3,12 @@
     <head>
         <title>odoc</title>
         <style>
+            * {
+                font-family: Arial, Helvetica, sans-serif;
+            }
             body {
                 background-color: #0043ab;
+                overflow: hidden;
             }
             .desktop {
                 color: white;
@@ -193,7 +197,7 @@
                             if (!isMoving) {
                                 isMoving = true
                                 moveInterval = setInterval(() => {
-                                    setPosition(mouseX - (data.width - 90), mouseY - 30)
+                                    setPosition(mouseX - (data.width - (data.noCloseButton == true ? 30 : 90)), mouseY - 30)
                                 }, 10)
                                 if (win.onstartmove) win.onstartmove()
                             } else {
@@ -256,6 +260,38 @@
                 errwin.content.innerHTML = "<div style=\"text-align:center;\"><br><img src=\"./assets/icons/info.png\" width=\"75\" height=\"75\"><p>" + message + "</p></div>"
                 console.info(message)
             }
+            function showWarning(message, playSound, buttonToExit, buttonText) {
+                const warningWindow = createWindow({
+                    title: "Warning",
+                    icon: "./assets/icons/warning.png",
+                    noCloseButton: buttonToExit,
+                    width: 640,
+                    height: 220 + (buttonToExit ? 100 : 0)
+                })
+                warningWindow.onclose = () => {
+                    warningWindow.close()
+                }
+                warningWindow.content.innerHTML = "<div style=\"text-align:center;\"><br><img src=\"./assets/icons/warning.png\" width=\"75\" height=\"75\"><p>" + message + "</p></div>"
+                console.warn(message)
+                if (buttonToExit) {
+                    warningWindow.content.append(document.createElement("br"))
+                    warningWindow.content.append(document.createElement("br"))
+                    const centerDiv = document.createElement("div")
+                    centerDiv.setAttribute("style", "text-align:center")
+                    const exitButton = document.createElement("input")
+                    exitButton.type = "submit"
+                    exitButton.value = (buttonText != null ? buttonText : "OK")
+                    exitButton.onclick = () => {
+                        warningWindow.onclose()
+                    }
+                    centerDiv.append(exitButton)
+                    warningWindow.content.append(centerDiv)
+                }
+                if (playSound) {
+                    const audio = new Audio("https://cdn.discordapp.com/attachments/914411539887456296/1017285867787796521/ding.wav")
+                    audio.play()
+                }
+            }
             // create programs
             createProgram("user", "./assets/icons/userfolder.png", function(id, name, image) {
                 const w = createWindow({
@@ -285,6 +321,7 @@
                 storageLabel.innerHTML = "Computer storage"
                 w.content.append(storageLabel)
                 const details = document.createElement("details")
+                details.setAttribute("style", "height:20em;overflow:auto")
                 const summary = document.createElement("summary")
                 summary.innerHTML = "View localStorage"
                 details.append(summary)
@@ -362,7 +399,7 @@
                     const searchBar = document.createElement("input")
                     searchBar.title = "Search for something"
                     searchBar.type = "text"
-                    searchBar.size = 130
+                    searchBar.size = 120
                     infobar.append(searchBar)
                     const searchButton = document.createElement("input")
                     searchButton.title = "Search"
@@ -387,34 +424,107 @@
                     const searchingHandlerSelector = document.createElement("select")
                     searchingHandlerSelector.title = "Switch searching handler"
                     infobar.append(searchingHandlerSelector)
+                    searchingHandlerSelector.onchange = () => {
+                        if (searchingHandlerSelector.value != "fetchhtml") return
+                        showWarning("Enabling this will inject this page with the target website's HTML content. If you didn't understand that or you know that this is unsafe, switch the option back to iFrame or Fetch: Blob.", true, true, "I understand the dangers of this")
+                    }
                     const handlerIframeOption = document.createElement("option")
                     handlerIframeOption.innerHTML = "iFrame"
                     handlerIframeOption.value = "iframe"
                     searchingHandlerSelector.append(handlerIframeOption)
                     const handlerFetchOption = document.createElement("option")
-                    handlerFetchOption.innerHTML = "Fetch"
+                    handlerFetchOption.innerHTML = "Fetch: Blob"
                     handlerFetchOption.value = "fetch"
                     searchingHandlerSelector.append(handlerFetchOption)
+                    const handlerFetchHTMLOption = document.createElement("option")
+                    handlerFetchHTMLOption.innerHTML = "Fetch: HTML"
+                    handlerFetchHTMLOption.value = "fetchhtml"
+                    searchingHandlerSelector.append(handlerFetchHTMLOption)
+                    const handlerFetchBlobTabOption = document.createElement("option")
+                    handlerFetchBlobTabOption.innerHTML = "Fetch: Blob (new tab)"
+                    handlerFetchBlobTabOption.value = "fetchblobtab"
+                    searchingHandlerSelector.append(handlerFetchBlobTabOption)
+                    const setHeadersButton = document.createElement("input")
+                    setHeadersButton.title = "Set headers for the request"
+                    setHeadersButton.type = "submit"
+                    setHeadersButton.value = "💿"
+                    infobar.append(setHeadersButton)
+                    let headers = {}
+                    if (!localStorage.getItem("WEBFRAME_REQUEST_headers")) {
+                        localStorage.setItem("WEBFRAME_REQUEST_headers", JSON.stringify(headers))
+                    }
+                    setHeadersButton.onclick = () => {
+                        const hw = createWindow({
+                            title: "webframe - set headers",
+                            icon: image,
+                            noCloseButton: true,
+                            width: 500,
+                            height: 500
+                        })
+                        setHeadersButton.setAttribute("style", "display:none")
+                        const finishedButton = document.createElement("input")
+                        finishedButton.value = "Finished"
+                        finishedButton.type = "submit"
+                        hw.content.setAttribute("style", "text-align:center")
+                        hw.content.append(document.createElement("br"))
+                        hw.content.append(finishedButton)
+                        hw.content.append(document.createElement("br"))
+                        hw.content.append(document.createElement("br"))
+                        const headerTextBox = document.createElement("textarea")
+                        headerTextBox.setAttribute("style", "width:80%;height:25em")
+                        hw.content.append(headerTextBox)
+                        finishedButton.onclick = () => {
+                            let newHeaders = null
+                            try {
+                                newHeaders = JSON.parse(headerTextBox.value)
+                            } catch (err) {
+                                showError("Invalid Header JSON; " + err, true)
+                                return
+                            }
+                            headers = newHeaders
+                            localStorage.setItem("WEBFRAME_REQUEST_headers", JSON.stringify(headers))
+                            hw.close()
+                            setHeadersButton.removeAttribute("style")
+                        }
+                        headerTextBox.value = localStorage.getItem("WEBFRAME_REQUEST_headers")
+                    }
                     w.content.append(infobar)
                     const webframe = document.createElement("iframe")
-                    webframe.setAttribute("style", "width:100%;height:39em")
+                    let fetchhtmlDiv
                     function loadWebpage(url) {
-                        const isUsingFetch = searchingHandlerSelector.value == "fetch"
+                        webframe.setAttribute("style", "width:100%;height:39em")
+                        if (fetchhtmlDiv) {
+                            fetchhtmlDiv.remove()
+                            fetchhtmlDiv = null
+                        }
+                        const isUsingFetch = searchingHandlerSelector.value == "fetch" || searchingHandlerSelector.value == "fetchhtml" || searchingHandlerSelector.value == "fetchblobtab"
                         if (isUsingFetch == true) {
                             const blob = new Blob(["<p>Fetching page, please wait...</p>"], {
                                 type: "text/html"
                             })
                             webframe.src = window.URL.createObjectURL(blob)
                             fetch(String(url), {
-                                headers: {
-                                    "Access-Control-Allow-Origin": "*",
-                                    "Origin": String(url)
-                                }
-                            }).then(response => { response.text().then(html => {
-                                const blob = new Blob([html], {
-                                    type: response.headers.get("Content-Type")
-                                })
-                                webframe.src = window.URL.createObjectURL(blob)
+                                headers: headers
+                            }).then(response => {
+                                const format = searchingHandlerSelector.value == "fetch" ? "blob" : "html"
+                                const promise = (format == "blob" ? response.blob() : response.text())
+                                promise.then(sanitized => {
+                                    let blob = sanitized
+                                    if (searchingHandlerSelector.value == "fetchhtml") {
+                                        webframe.setAttribute("style", "display:none")
+                                        fetchhtmlDiv = document.createElement("div")
+                                        w.content.append(fetchhtmlDiv)
+                                        fetchhtmlDiv.innerHTML = sanitized
+                                    } else if (searchingHandlerSelector.value == "fetchblobtab") {
+                                        let newWindow = window.open('/')
+                                        const blob = new Blob([sanitized], {
+                                            type: response.headers.get("Content-Type")
+                                        })
+                                        const url = window.URL.createObjectURL(blob)
+                                        newWindow.location = url
+                                    } else {
+                                        webframe.src = window.URL.createObjectURL(blob)
+                                    }
                             }).catch(err => {
                                 const blob = new Blob(["<p>An error occurred: " + err + "</p>"], {
                                     type: "text/html"
@@ -427,7 +537,14 @@
                                 webframe.src = window.URL.createObjectURL(blob)
                             })
                         } else {
-                            webframe.src = url
+                            if (Object.getOwnPropertyNames(headers).length > 0) {
+                                const blob = new Blob(["<br><br><p style=\"text-align:center;font-size:200%\"><b>For headers you are required to use the \"Fetch: Blob\" or \"Fetch: HTML\" search type next to the Home button in the dropdown.</b></p>"], {
+                                    type: "text/html"
+                                })
+                                webframe.src = window.URL.createObjectURL(blob)
+                            } else {
+                                webframe.src = url
+                            }
                         }
                         searchBar.value = url
                         const historyArray = JSON.parse(localStorage.getItem("WEBFRAME_history"))
@@ -562,6 +679,7 @@
                 // create the odoc dependency
                 const odoc = {}
                 odoc.showError = showError
+                odoc.showWarning = showWarning
                 odoc.showInfo = showInfo
                 odoc.createWindow = createWindow
                 odoc.createProgram = createProgram
