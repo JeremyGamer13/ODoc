@@ -243,6 +243,19 @@
                     audio.play()
                 }
             }
+            function showInfo(message) {
+                const errwin = createWindow({
+                    title: "Info",
+                    icon: "./assets/icons/info.png",
+                    width: 640,
+                    height: 220
+                })
+                errwin.onclose = () => {
+                    errwin.close()
+                }
+                errwin.content.innerHTML = "<div style=\"text-align:center;\"><br><img src=\"./assets/icons/info.png\" width=\"75\" height=\"75\"><p>" + message + "</p></div>"
+                console.info(message)
+            }
             // create programs
             createProgram("user", "./assets/icons/userfolder.png", function(id, name, image) {
                 const w = createWindow({
@@ -462,6 +475,115 @@
                     w.content.append(webframe)
                 }
             )
+            createProgram("executor", "./assets/icons/executor.png", function(id, name, image) {
+                const w = createWindow({
+                    title: name,
+                    icon: image,
+                    width: 1280,
+                    height: 720
+                })
+                const textarea = document.createElement("textarea")
+                let tabs = []
+                let currentTabKey = "prg1"
+                function save() {
+                    localStorage.setItem("EXECUTOR_" + currentTabKey, textarea.value)
+                    localStorage.setItem("EXECUTOR_tabs", JSON.stringify(tabs))
+                }
+                function load() {
+                    const script = localStorage.getItem("EXECUTOR_" + currentTabKey)
+                    if (script) {
+                        textarea.value = script
+                    } else {
+                        textarea.value = ""
+                    }
+                }
+                w.onclose = () => {
+                    save()
+                    w.close()
+                }
+                const codeTabDiv = document.createElement("div")
+                tabs.push({key: currentTabKey})
+                if (!localStorage.getItem("EXECUTOR_tabs")) {
+                    localStorage.setItem("EXECUTOR_tabs", JSON.stringify(tabs))
+                } else {
+                    const newTabs = JSON.parse(localStorage.getItem("EXECUTOR_tabs"))
+                    tabs = newTabs
+                }
+                function resetTabs() {
+                    codeTabDiv.innerHTML = ""
+                    let i = 1
+                    tabs.forEach(tab => {
+                        let index = i
+                        const openTabButton = document.createElement("button")
+                        openTabButton.type = "submit"
+                        openTabButton.innerHTML = "Program " + i + " "
+                        openTabButton.onclick = () => {
+                            save()
+                            currentTabKey = "prg" + index
+                            load()
+                        }
+                        codeTabDiv.append(openTabButton)
+                        const closeTabButton = document.createElement("input")
+                        closeTabButton.type = "submit"
+                        closeTabButton.value = "X"
+                        openTabButton.append(closeTabButton)
+                        closeTabButton.onclick = () => {
+                            tabs.splice(tabs.indexOf(currentTabKey), 1)
+                            resetTabs()
+                            save()
+                            currentTabKey = "prg1"
+                            load()
+                        }
+                        if (i == 1) closeTabButton.remove()
+                        i++
+                    })
+                    const addNewTabButton = document.createElement("input")
+                    addNewTabButton.type = "submit"
+                    addNewTabButton.value = "+"
+                    codeTabDiv.append(addNewTabButton)
+                    addNewTabButton.onclick = () => {
+                        const key = "prg" + (tabs.length + 1)
+                        tabs.push({key: key})
+                        currentTabKey = key
+                        load()
+                        resetTabs()
+                    }
+                }
+                resetTabs()
+                load()
+                w.content.append(codeTabDiv)
+                textarea.setAttribute("style", "width:100%;height:44em")
+                textarea.placeholder = "odoc.showInfo('Hello world!')"
+                w.content.append(textarea)
+                const runButton = document.createElement("button")
+                runButton.innerHTML = "▶"
+                runButton.setAttribute("style", "background-color:green;color:white;width:100%;height:3em")
+                w.content.append(runButton)
+                // create the odoc dependency
+                const odoc = {}
+                odoc.showError = showError
+                odoc.showInfo = showInfo
+                odoc.createWindow = createWindow
+                odoc.createProgram = createProgram
+                // programStorage
+                // const programStorage = {cache: {}}
+                // programStorage.keys = []
+                // programStorage.setItem = (key, value) => {
+                //     localStorage.setItem("EXECUTOR_PROGRAMSTORAGE_" + key, value)
+                //     programStorage.cache[String(key)] = value
+                //     if (!programStorage.keys.includes(key)) programStorage.keys.push(key)
+                // }
+                // handle run button stuff
+                runButton.onclick = () => {
+                    try {
+                        eval(textarea.value)
+                    } catch (err) {
+                        showError(err, true)
+                    }
+                }
+                //const str = localStorage.getItem("NOTEPAD_string")
+                //if (str) textarea.value = str
+            })
             // dragging desktop icons
             /*
             const desktopicons = document.getElementsByName("desktop_icon")
