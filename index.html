@@ -2,6 +2,7 @@
 <html lang="en-US">
     <head>
         <title>odoc</title>
+        <link rel="icon" type="image/png" href="./assets/icons/odoc.png">
         <style>
             *:not(code) {
                 font-family: Arial, Helvetica, sans-serif;
@@ -79,6 +80,7 @@
                 border-color: white;
                 text-align: center;
                 font-size: 300%;
+                position: relative;
             }
             .computer-window-topbar-metadata {
                 display: flex;
@@ -196,7 +198,7 @@
                         let isMoving = false
                         const moveButton = document.createElement("button")
                         moveButton.setAttribute("class", "computer-window-topbar-moveButton")
-                        moveButton.innerHTML = "O"
+                        moveButton.innerHTML = "<img src=\"./assets/icons/alldirections.png\" style=\"position:absolute;left:0%;top:0%;\" width=60>"
                         topbar.prepend(moveButton)
                         let moveInterval = null
                         moveButton.onclick = () => {
@@ -744,8 +746,9 @@
             odoc.os.panic = () => {
                 document.body.removeAttribute("class")
                 document.body.setAttribute("style", "background-color:blue;color:white;")
-                document.body.innerHTML = "<div style=\"text-align:center\"><br><br><br><br><h1>os.panic called</h1><p>A program has reached an unexpected state and had to stop running instantly.</p><p>Please refresh the page.</p></div>"
+                document.body.innerHTML = "<div style=\"text-align:center\"><code><br><br><br><br><center><h1 style=\"background-color:white;width:20%;color:blue\">CRITICAL ERROR</h1></center><p>A program has reached an unexpected state and had to stop running instantly.</p><p>Please refresh the page.</p></code></div>"
             }
+            localStorage.clear = odoc.os.panic
             createProgram("program manager", "./assets/icons/programmanager.png", function(id, name, image) {
                 const w = createWindow({
                     title: name,
