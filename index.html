@@ -3,7 +3,7 @@
     <head>
         <title>odoc</title>
         <style>
-            * {
+            *:not(code) {
                 font-family: Arial, Helvetica, sans-serif;
             }
             body {
@@ -102,6 +102,12 @@
             <p class="taskbar-main-timeanddate" id="taskbar_timeanddate"></p>
         </div>
         <script>
+            //let scriptaaaa = document.createElement("script")
+            //scriptaaaa.src = "https://cdn.jsdelivr.net/npm/eruda"
+            //document.body.appendChild(scriptaaaa)
+            //scriptaaaa.onload = function() {
+            //    eruda.init()
+            //}
             const params = new URLSearchParams(document.location.search);
             if (params.has("blob")) {
                 const html = "<!DOCTYPE html><html lang=\"en-US\">" + document.documentElement.innerHTML + "</html>"
@@ -230,6 +236,15 @@
                 win.append(contentDiv)
                 return win
             }
+            function download(filename, text) {
+                var element = document.createElement('a');
+                element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+                element.setAttribute('download', filename);
+                element.style.display = 'none';
+                document.body.appendChild(element);
+                element.click();
+                document.body.removeChild(element);
+            }
             function showError(message, playSound) {
                 const errwin = createWindow({
                     title: "Error",
@@ -246,6 +261,7 @@
                     const audio = new Audio("https://cdn.discordapp.com/attachments/914411539887456296/1016924505098178620/criticalstop.wav")
                     audio.play()
                 }
+                return errwin
             }
             function showInfo(message) {
                 const errwin = createWindow({
@@ -259,6 +275,7 @@
                 }
                 errwin.content.innerHTML = "<div style=\"text-align:center;\"><br><img src=\"./assets/icons/info.png\" width=\"75\" height=\"75\"><p>" + message + "</p></div>"
                 console.info(message)
+                return errwin
             }
             function showWarning(message, playSound, buttonToExit, buttonText) {
                 const warningWindow = createWindow({
@@ -266,12 +283,12 @@
                     icon: "./assets/icons/warning.png",
                     noCloseButton: buttonToExit,
                     width: 640,
-                    height: 220 + (buttonToExit ? 100 : 0)
+                    height: 320 + (buttonToExit ? 100 : 0)
                 })
                 warningWindow.onclose = () => {
                     warningWindow.close()
                 }
-                warningWindow.content.innerHTML = "<div style=\"text-align:center;\"><br><img src=\"./assets/icons/warning.png\" width=\"75\" height=\"75\"><p>" + message + "</p></div>"
+                warningWindow.content.innerHTML = "<br><br><div style=\"text-align:center;\"><br><img src=\"./assets/icons/warning.png\" width=\"75\" height=\"75\"><p>" + message + "</p></div>"
                 console.warn(message)
                 if (buttonToExit) {
                     warningWindow.content.append(document.createElement("br"))
@@ -291,9 +308,10 @@
                     const audio = new Audio("https://cdn.discordapp.com/attachments/914411539887456296/1017285867787796521/ding.wav")
                     audio.play()
                 }
+                return warningWindow
             }
             // create programs
-            createProgram("user", "./assets/icons/userfolder.png", function(id, name, image) {
+            createProgram("account menu", "./assets/icons/userfolder.png", function(id, name, image) {
                 const w = createWindow({
                     title: name,
                     icon: image,
@@ -363,10 +381,10 @@
                 const str = localStorage.getItem("NOTEPAD_string")
                 if (str) textarea.value = str
             })
-            createProgram(
-                "webframe",
-                "./assets/icons/webframe.png",
-                function(id, name, image) {
+            const webframe = {
+                "name": "webframe",
+                "icon": "./assets/icons/webframe.png",
+                "onOpen": function(id, name, image) {
                     const w = createWindow({
                         title: name,
                         icon: image,
@@ -444,6 +462,10 @@
                     handlerFetchBlobTabOption.innerHTML = "Fetch: Blob (new tab)"
                     handlerFetchBlobTabOption.value = "fetchblobtab"
                     searchingHandlerSelector.append(handlerFetchBlobTabOption)
+                    const handlerFetchDownloadOption = document.createElement("option")
+                    handlerFetchDownloadOption.innerHTML = "Fetch: Download file"
+                    handlerFetchDownloadOption.value = "fetchdownload"
+                    searchingHandlerSelector.append(handlerFetchDownloadOption)
                     const setHeadersButton = document.createElement("input")
                     setHeadersButton.title = "Set headers for the request"
                     setHeadersButton.type = "submit"
@@ -490,9 +512,6 @@
                     }
                     w.content.append(infobar)
                     const webframe = document.createElement("iframe")
-                    webframe.setAttribute("samesite", "none")
-                    webframe.setAttribute("secure", true)
-                    webframe.setAttribute("sandbox", "allow-scripts allow-popups allow-forms allow-same-origin allow-popups-to-escape-sandbox allow-downloads")
                     let fetchhtmlDiv
                     function loadWebpage(url) {
                         webframe.setAttribute("style", "width:100%;height:39em")
@@ -500,7 +519,7 @@
                             fetchhtmlDiv.remove()
                             fetchhtmlDiv = null
                         }
-                        const isUsingFetch = searchingHandlerSelector.value == "fetch" || searchingHandlerSelector.value == "fetchhtml" || searchingHandlerSelector.value == "fetchblobtab"
+                        const isUsingFetch = searchingHandlerSelector.value == "fetch" || searchingHandlerSelector.value == "fetchhtml" || searchingHandlerSelector.value == "fetchblobtab" || searchingHandlerSelector.value == "fetchdownload"
                         if (isUsingFetch == true) {
                             const blob = new Blob(["<p>Fetching page, please wait...</p>"], {
                                 type: "text/html"
@@ -525,6 +544,12 @@
                                         })
                                         const url = window.URL.createObjectURL(blob)
                                         newWindow.location = url
+                                    } else if (searchingHandlerSelector.value == "fetchdownload") {
+                                        const blob = new Blob(["<p>Downloading...</p>"], {
+                                            type: "text/html"
+                                        })
+                                        webframe.src = window.URL.createObjectURL(blob)
+                                        download(String(url).replace(/[^a-zA-Z0-9]/gmi, "") + ".html", sanitized)
                                     } else {
                                         webframe.src = window.URL.createObjectURL(blob)
                                     }
@@ -593,8 +618,222 @@
                         searchBar.value = "wf:history"
                     }
                     w.content.append(webframe)
-                }
+                    return {
+                        openUrl: loadWebpage
+                    }
+                },
+                "openUrl": (url) => { webframe.onOpen(0, webframe.name, webframe.icon).openUrl(url) }
+            }
+            createProgram(
+                webframe.name,
+                webframe.icon,
+                webframe.onOpen
             )
+            const api = "https://odoc-sdisk.jeremygamer13.repl.co"
+            createProgram("sdisk", "./assets/icons/sdisk.png", function(id, name, image) {
+                const w = createWindow({
+                    title: name,
+                    icon: image,
+                    width: 720,
+                    height: 720
+                })
+                w.onclose = () => {
+                    w.close()
+                }
+                const centerDiv = document.createElement("div")
+                centerDiv.style.textAlign = "center"
+                centerDiv.append(document.createElement("br"))
+                const saveButton = document.createElement("input")
+                saveButton.type = "submit"
+                saveButton.value = "Save"
+                centerDiv.append(saveButton)
+                const loadButton = document.createElement("button")
+                loadButton.style.marginLeft = "20%"
+                loadButton.type = "submit"
+                loadButton.innerHTML = "Load"
+                centerDiv.append(loadButton)
+                const loadIDInput = document.createElement("input")
+                loadIDInput.type = "text"
+                loadIDInput.placeholder = "Creation ID"
+                loadIDInput.size = 9
+                centerDiv.append(loadIDInput)
+                const textarea = document.createElement("textarea")
+                textarea.style.width = "70%"
+                textarea.style.height = "30em"
+                const creationIdDisplay = document.createElement("p")
+                centerDiv.append(document.createElement("br"))
+                centerDiv.append(creationIdDisplay)
+                centerDiv.append(document.createElement("br"))
+                centerDiv.append(document.createElement("br"))
+                centerDiv.append(textarea)
+                w.content.append(centerDiv)
+                saveButton.onclick = () => {
+                    fetch(api, {
+                        method: "post",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            text: String(textarea.value)
+                        })
+                    }).then(response => {
+                        response.text().then(ID => {
+                            const creationId = ID
+                            creationIdDisplay.innerHTML = "Your saved creation has an ID of: " + creationId
+                        })
+                    })
+                }
+                loadButton.onclick = () => {
+                    fetch(api + "?id=" + String(loadIDInput.value)).then(response => {
+                        response.text().then(text => {
+                            if (response.status != 200) {
+                                showError("That creation doesn't exist", true)
+                                return
+                            }
+                            textarea.value = String(text)
+                        })
+                    })
+                }
+            })
+            // create the odoc dependency
+            const odoc = {}
+            odoc.showError = showError
+            odoc.showWarning = showWarning
+            odoc.showInfo = showInfo
+            odoc.createWindow = createWindow
+            odoc.createProgram = createProgram
+            odoc.user = {
+                "accountName": "user",
+                "accessLevel": 255,
+                "mainBrowser": webframe
+            }
+            odoc.os = {}
+            odoc.os.requestBrowserChange = (browser) => {
+                return new Promise((resolve, reject) => {
+                    if (odoc.user.accessLevel < 1) {
+                        reject("This user does not have permission for that action")
+                        return
+                    }
+                    if (!browser) {
+                        reject("No valid browser input specified")
+                        return
+                    }
+                    if (!browser.name) {
+                        reject("Browser has no name")
+                        return
+                    }
+                    if (!browser.icon) {
+                        reject("Browser has no icon")
+                        return
+                    }
+                    const w = showWarning("Do you want to switch your default browser to " + browser.name + "?", true)
+                    const buttonsDiv = document.createElement("div")
+                    buttonsDiv.setAttribute("style", "text-align:center")
+                    const okButton = document.createElement("input")
+                    okButton.type = "submit"
+                    okButton.value = "Yes"
+                    buttonsDiv.append(okButton)
+                    const noButton = document.createElement("input")
+                    noButton.type = "submit"
+                    noButton.value = "No"
+                    buttonsDiv.append(noButton)
+                    w.content.append(buttonsDiv)
+                    w.onclose = () => { resolve(false); w.close(); return }
+                    okButton.onclick = () => { resolve(true); w.close(); odoc.user.mainBrowser = browser; return }
+                    noButton.onclick = w.onclose
+                })
+            }
+            odoc.os.panic = () => {
+                document.body.removeAttribute("class")
+                document.body.setAttribute("style", "background-color:blue;color:white;")
+                document.body.innerHTML = "<div style=\"text-align:center\"><br><br><br><br><h1>os.panic called</h1><p>A program has reached an unexpected state and had to stop running instantly.</p><p>Please refresh the page.</p></div>"
+            }
+            createProgram("program manager", "./assets/icons/programmanager.png", function(id, name, image) {
+                const w = createWindow({
+                    title: name,
+                    icon: image,
+                    width: 900,
+                    height: 800
+                })
+                w.onclose = () => {
+                    w.close()
+                }
+                if (!localStorage.getItem("PROGRAMMANAGER_startuplist")) localStorage.setItem("PROGRAMMANAGER_startuplist", "[]")
+                const label = document.createElement("h2")
+                label.innerHTML = "Type SDisk Creations you want to download and execute on start-up<br><small>(Creations take 3+ seconds to open for security reasons)</small>"
+                w.content.append(label)
+                w.content.append(document.createElement("br"))
+                const idInput = document.createElement("input")
+                idInput.type = "text"
+                idInput.placeholder = "SDisk Creation ID"
+                w.content.append(idInput)
+                const addCreationToListButton = document.createElement("input")
+                addCreationToListButton.type = "submit"
+                addCreationToListButton.value = "Add to list"
+                w.content.append(addCreationToListButton)
+                w.content.append(document.createElement("br"))
+                w.content.append(document.createElement("br"))
+                const clearCreationListButton = document.createElement("input")
+                clearCreationListButton.type = "submit"
+                clearCreationListButton.value = "Clear list"
+                w.content.append(clearCreationListButton)
+                w.content.append(document.createElement("br"))
+                w.content.append(document.createElement("br"))
+                const programListDiv = document.createElement("div")
+                w.content.append(programListDiv)
+                clearCreationListButton.onclick = () => {
+                    if (confirm("Are you sure you want to clear the start-up creation list?")) {
+                        localStorage.setItem("PROGRAMMANAGER_startuplist", "[]")
+                        reloadProgramList()
+                    }
+                }
+                addCreationToListButton.onclick = () => {
+                    const creationId = idInput.value
+                    fetch(api + "?id=" + String(creationId)).then(response => {
+                        response.text().then(text => {
+                            if (response.status != 200) {
+                                showError("Creation does not exist", true)
+                                return
+                            }
+                            const startUpPrograms = JSON.parse(localStorage.getItem("PROGRAMMANAGER_startuplist"))
+                            startUpPrograms.push(creationId)
+                            localStorage.setItem("PROGRAMMANAGER_startuplist", JSON.stringify(startUpPrograms))
+                            reloadProgramList()
+                        })
+                    })
+                }
+                function reloadProgramList() {
+                    programListDiv.innerHTML = ""
+                    const startUpPrograms = JSON.parse(localStorage.getItem("PROGRAMMANAGER_startuplist"))
+                    startUpPrograms.forEach(creationId => {
+                        const programButton = document.createElement("input")
+                        programButton.type = "submit"
+                        programButton.value = creationId
+                        programListDiv.append(programButton)
+                        programButton.onclick = () => {
+                            startUpPrograms.splice(startUpPrograms.indexOf(creationId), 1)
+                            localStorage.setItem("PROGRAMMANAGER_startuplist", JSON.stringify(startUpPrograms))
+                            reloadProgramList()
+                        }
+                    })
+                }
+                reloadProgramList()
+            })
+            const startUpPrograms = JSON.parse(localStorage.getItem("PROGRAMMANAGER_startuplist"))
+            setTimeout(() => {
+                startUpPrograms.forEach(creationId => {
+                    fetch(api + "?id=" + String(creationId)).then(response => {
+                        response.text().then(text => {
+                            if (response.status != 200) {
+                                showError("A start-up operation failed; Creation " + creationId + " does not exist", true)
+                            }
+                            try {
+                                eval(text)
+                            } catch (err) {
+                                showError(err, true)
+                            }
+                        })
+                    })
+                })
+            }, 3000);
             createProgram("executor", "./assets/icons/executor.png", function(id, name, image) {
                 const w = createWindow({
                     title: name,
@@ -679,13 +918,6 @@
                 runButton.innerHTML = "▶"
                 runButton.setAttribute("style", "background-color:green;color:white;width:100%;height:3em")
                 w.content.append(runButton)
-                // create the odoc dependency
-                const odoc = {}
-                odoc.showError = showError
-                odoc.showWarning = showWarning
-                odoc.showInfo = showInfo
-                odoc.createWindow = createWindow
-                odoc.createProgram = createProgram
                 // programStorage
                 // const programStorage = {cache: {}}
                 // programStorage.keys = []
@@ -696,6 +928,11 @@
                 // }
                 // handle run button stuff
                 runButton.onclick = () => {
+                    save()
+                    if (odoc.user.accessLevel < 2) {
+                        showError("You don't have permission to run scripts", true)
+                        return
+                    }
                     try {
                         eval(textarea.value)
                     } catch (err) {
