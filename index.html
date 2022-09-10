@@ -126,6 +126,10 @@
             }
             const mouseUpEvents = []
             const registeredPrograms = []
+            window.addEventListener('beforeunload', (event) => {
+                event.preventDefault()
+                event.returnValue = "Are you sure you want to shutdown O-Doc?"
+            })
             window.onmouseup = () => {
                 mouseUpEvents.forEach(event => {
                     event()
@@ -754,14 +758,14 @@
                     title: name,
                     icon: image,
                     width: 900,
-                    height: 800
+                    height: 720
                 })
                 w.onclose = () => {
                     w.close()
                 }
                 if (!localStorage.getItem("PROGRAMMANAGER_startuplist")) localStorage.setItem("PROGRAMMANAGER_startuplist", "[]")
                 const label = document.createElement("h2")
-                label.innerHTML = "Type SDisk Creations you want to download and execute on start-up<br><small>(Creations take 3+ seconds to open for security reasons)</small>"
+                label.innerHTML = "Type SDisk Creations you want to download and execute on start-up<br><small>(To disable creations from loading on start, add ?nocreations to this websites link)</small>"
                 w.content.append(label)
                 w.content.append(document.createElement("br"))
                 const idInput = document.createElement("input")
@@ -821,7 +825,7 @@
                 reloadProgramList()
             })
             const startUpPrograms = JSON.parse(localStorage.getItem("PROGRAMMANAGER_startuplist"))
-            setTimeout(() => {
+            if (!params.has("nocreations")) {
                 startUpPrograms.forEach(creationId => {
                     fetch(api + "?id=" + String(creationId)).then(response => {
                         response.text().then(text => {
@@ -836,7 +840,7 @@
                         })
                     })
                 })
-            }, 3000);
+            }
             createProgram("executor", "./assets/icons/executor.png", function(id, name, image) {
                 const w = createWindow({
                     title: name,
